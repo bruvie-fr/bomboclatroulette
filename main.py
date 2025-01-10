@@ -195,5 +195,28 @@ while True:  # Main game restart loop
                         else:
                             print(f"Your attempt to steal from {target} failed!")
 
+            # Ask if the player wants to use their gun on someone if they have one
+            if player_guns[i] > 0:
+                use_gun = input(f"Do you want to use your Gun on another player? (yes/no): ").lower()
+                if use_gun == "yes":
+                    target = input(f"Enter the name of the player you want to shoot: ")
+                    if target in players and target != players[i]:
+                        print(f"{players[i]} shot {target}!")
+                        # The target loses 1 life
+                        target_index = players.index(target)
+                        if player_lives[target_index] > 0:
+                            player_lives[target_index] -= 1
+                            print(f"{target} lost 1 life! They now have {player_lives[target_index]} life(s) left.")
+                        else:
+                            print(f"{target} has no lives left and is out!")
+                            players.pop(target_index)
+                            player_money.pop(target_index)
+                            player_guns.pop(target_index)
+                            player_lives.pop(target_index)
+                            player_diseased.pop(target_index)
+                            player_disease_names.pop(target_index)
+                            player_thief_bags.pop(target_index)
+                            campfire_skip_turns.pop(target_index)
+
     print(f"{players[0]} wins the game!")
     print("\nGame restarting...\n")

@@ -8,31 +8,28 @@ while True:  # Main game restart loop
         print("You need at least 2 players to play the game.")
         num_players = int(input("How many players will participate? "))
 
-    # Ask for the starting amount of Thief Bags
     starting_thief_bags = 0
-
     players = [f"Player {i + 1}" for i in range(num_players)]
     out_chance = 0.05  # Probability of a player getting out
     disease_chance = 0.1  # Probability of a player getting a disease
-    horse_move_chance = 0.2  # Probability of pulling the horse move
     wolves_chance = 0.05  # Probability of wolves appearing
     thief_bag_success_chance = 0.5  # Chance of successfully stealing
     campfire_chance = 0.05  # Probability of triggering the campfire event
 
-    cabin_chance = 0.1  # Probability of triggering the cabin event
-    cabin_items = ["Gun", "Life", "Money (50 gold)", "Thief bag"]  # Possible rewards from the cabin
+    cabin_chance = 0.15  # Probability of triggering the cabin event
+    cabin_items = ["Gun", "Life", "Money (50 gold)", "Thief bag"]
 
     player_money = [0] * len(players)
     player_guns = [0] * len(players)
-    player_lives = [0] * len(players)
+    player_lives = [1] * len(players)
     player_diseased = [0] * len(players)
     player_disease_names = [None] * len(players)
     campfire_skip_turns = [0] * len(players)
-    player_thief_bags = [starting_thief_bags] * len(players)  # Set starting thief bags
+    player_thief_bags = [starting_thief_bags] * len(players)
 
     disease_names = [
         "Low taper fade",
-        "MASSIVE flu",
+        "Massive flu",
         "Bone cancer",
         "Crippling depression",
         "Beta syndrome"
@@ -48,15 +45,78 @@ while True:  # Main game restart loop
     # Main Game Loop
     while len(players) > 1:
         i = 0
-        while i < len(players):  # Handle dynamic player list
+        while i < len(players):
             if campfire_skip_turns[i] > 0:
                 print(f"{players[i]} is skipping their turn due to an event! ({campfire_skip_turns[i]} turns left)")
                 campfire_skip_turns[i] -= 1
                 i += 1
                 continue
 
-            input_action = input(f"{players[i]}, press Enter to continue: ")
+            input(f"{players[i]}, press Enter to continue: ")
 
+            # Allow the player to use items at the start of their turn
+            while True:
+                print(f"{players[i]}'s inventory: Guns: {player_guns[i]}, Lives: {player_lives[i]}, Thief Bags: {player_thief_bags[i]}")
+                if player_diseased[i] > 0:
+                    print(f"WARNING: You are diseased with {player_disease_names[i]}! Use a Potion to cure it.")
+
+                use_item = input("Do you want to use an item? (yes/no): ").lower()
+                if use_item == "yes":
+                    item_choice = input("What do you want to use? (Gun/Potion/Thief bag): ").capitalize()
+                    if item_choice == "Gun" and player_guns[i] > 0:
+                        attack_choice = input("Do you want to use the gun for defense or attack another player? (defense/attack): ").lower()
+                        if attack_choice == "attack":
+                            target_player = int(input("Which player do you want to attack? Enter their number (1, 2, etc.): ")) - 1
+                            if target_player < 0 or target_player >= len(players) or target_player == i:
+                                print("Invalid target.")
+                            else:
+                                if player_lives[target_player] > 0:
+                                    print(f"{players[i]} attacks {players[target_player]} with the gun!")
+                                    player_lives[target_player] -= 1
+                                    if player_lives[target_player] == 0:
+                                        print(f"{players[target_player]} has lost all lives and is out!")
+                                        players.pop(target_player)
+                                        player_money.pop(target_player)
+                                        player_guns.pop(target_player)
+                                        player_lives.pop(target_player)
+                                        player_diseased.pop(target_player)
+                                        player_disease_names.pop(target_player)
+                                        player_thief_bags.pop(target_player)
+                                        campfire_skip_turns.pop(target_player)
+                                    else:
+                                        print(f"{players[target_player]} has {player_lives[target_player]} lives left.")
+                                player_guns[i] -= 1
+                        elif attack_choice == "defense":
+                            print(f"{players[i]} uses a Gun for defense!")
+                            player_guns[i] -= 1
+                            continue  # Skip the rest of the turn to ensure the player with defense doesn't get attacked
+                    elif item_choice == "Potion" and player_diseased[i] > 0:
+                        print(f"{players[i]} uses a Potion and cures their disease ({player_disease_names[i]}).")
+                        player_diseased[i] = 0
+                        player_disease_names[i] = None
+                    elif item_choice == "Potion":
+                        print("You are not diseased, so the Potion has no effect.")
+                    elif item_choice == "Thief bag" and player_thief_bags[i] > 0:
+                        target_player = int(input("Which player do you want to steal from? Enter their number (1, 2, etc.): ")) - 1
+                        if target_player < 0 or target_player >= len(players) or target_player == i:
+                            print("Invalid target.")
+                        else:
+                            if random.random() < thief_bag_success_chance:
+                                stolen_gold = random.randint(10, 30)
+                                stolen_gold = min(stolen_gold, player_money[target_player])  # Ensure they have enough to steal
+                                player_money[target_player] -= stolen_gold
+                                player_money[i] += stolen_gold
+                                print(f"{players[i]} successfully stole {stolen_gold} gold from {players[target_player]}!")
+                            else:
+                                print(f"{players[i]} failed to steal from {players[target_player]}.")
+                            player_thief_bags[i] -= 1
+                    else:
+                        print("Invalid choice or insufficient items.")
+                    break
+                else:
+                    break
+
+            # Gameplay Events and Random Triggers
             if random.random() < campfire_chance:
                 print(f"{players[i]} triggered the campfire! Their turn will be skipped for 2 turns, but they gain an extra life.")
                 player_lives[i] += 1
@@ -66,8 +126,7 @@ while True:  # Main game restart loop
 
             if random.random() < cabin_chance:
                 item = random.choice(cabin_items)
-                print(f"{players[i]} was sent to the cabin! They skip their next 2 turns and receive a {item}.")
-                campfire_skip_turns[i] = 2
+                print(f"{players[i]} found a hidden cabin and received a {item}!")
                 if item == "Gun":
                     player_guns[i] += 1
                 elif item == "Life":
@@ -75,8 +134,7 @@ while True:  # Main game restart loop
                 elif item == "Money (50 gold)":
                     player_money[i] += 50
                 elif item == "Thief bag":
-                    print(f"{players[i]} received a Thief bag! They can now steal from other players.")
-                    player_thief_bags[i] += 1  # Increase Thief Bags
+                    player_thief_bags[i] += 1
                 i += 1
                 continue
 
@@ -96,12 +154,14 @@ while True:  # Main game restart loop
                     player_lives.pop(i)
                     player_diseased.pop(i)
                     player_disease_names.pop(i)
-                    player_thief_bags.pop(i)  # Remove Thief Bags
+                    player_thief_bags.pop(i)
                     campfire_skip_turns.pop(i)
                     continue
 
+            # Add Gold for Surviving the Turn
             player_money[i] += 10
 
+            # Disease Mechanic
             if player_diseased[i] > 0:
                 player_diseased[i] += 1
                 if player_diseased[i] > 2:
@@ -115,8 +175,6 @@ while True:  # Main game restart loop
                     player_thief_bags.pop(i)
                     campfire_skip_turns.pop(i)
                     continue
-                else:
-                    print(f"{players[i]} is suffering from {player_disease_names[i]}! ({2 - player_diseased[i]} turns left)")
 
             elif random.random() < disease_chance:
                 disease = random.choice(disease_names)
@@ -124,35 +182,13 @@ while True:  # Main game restart loop
                 player_diseased[i] = 1
                 player_disease_names[i] = disease
 
-            if random.random() < out_chance:
-                print(f"{players[i]} is out!")
-                players.pop(i)
-                player_money.pop(i)
-                player_guns.pop(i)
-                player_lives.pop(i)
-                player_diseased.pop(i)
-                player_disease_names.pop(i)
-                player_thief_bags.pop(i)
-                campfire_skip_turns.pop(i)
-                continue
-
             i += 1
 
+        # End of Round Store
         for i in range(len(players)):
-            print(f"{players[i]}, you have {player_money[i]} gold.")
+            print(f"\n{players[i]}, you have {player_money[i]} gold.")
             while True:
-                # Check if the player's turn is skipped
-                if campfire_skip_turns[i] > 0:
-                    print(f"{players[i]}, you cannot access the shop because your turn is skipped!")
-                    break
-
-                # Display inventory at the start of the shop
-                print("\nYour Inventory:")
-                print(f"- Guns: {player_guns[i]}")
-                print(f"- Lives: {player_lives[i]}")
-                print(f"- Thief Bags: {player_thief_bags[i]} (can steal if you have at least 1)")
-                print(f"- Diseased: {'Yes, suffering from ' + player_disease_names[i] if player_diseased[i] else 'No'}")
-                print("Item Shop:")
+                print("\nItem Shop:")
                 for item, price in item_shop.items():
                     print(f"- {item}: {price} gold")
                 choice = input("What do you want to buy? (Enter 'exit' to leave the shop): ").capitalize()
@@ -166,57 +202,22 @@ while True:  # Main game restart loop
                         elif choice == "Life":
                             player_lives[i] += 1
                         elif choice == "Potion":
-                            if player_diseased[i] > 0:
-                                print(f"You used a Potion and cured {player_disease_names[i]}!")
-                                player_diseased[i] = 0
-                                player_disease_names[i] = None
-                            else:
-                                print("You used a Potion, but you weren't diseased.")
+                            print("Potion added to inventory.")
                         elif choice == "Thief bag":
-                            print(f"You purchased a Thief bag! You can now steal from other players.")
-                            player_thief_bags[i] += 1  # Increase Thief Bags
+                            player_thief_bags[i] += 1
                     else:
                         print(f"You don't have enough gold to buy {choice}.")
                 else:
                     print("Invalid choice.")
 
-            # After exiting the shop, ask about using the Thief Bag if the player has one
-            if player_thief_bags[i] > 0:
-                use_thief_bag = input(f"Do you want to use your Thief bag to steal from another player? (yes/no): ").lower()
-                if use_thief_bag == "yes":
-                    target = input(f"Enter the name of the player you want to steal from: ")
-                    if target in players and target != players[i]:
-                        target_index = players.index(target)
-                        if random.random() < thief_bag_success_chance:
-                            stolen_amount = min(20, player_money[target_index])
-                            player_money[i] += stolen_amount
-                            player_money[target_index] -= stolen_amount
-                            print(f"You stole {stolen_amount} gold from {target}!")
-                        else:
-                            print(f"Your attempt to steal from {target} failed!")
+    # Game End
+    if len(players) == 1:
+        print(f"\nCongratulations! {players[0]} is the winner of Bombaclat Roulette!")
+    else:
+        print("\nThe game ended with no winner!")
 
-            # Ask if the player wants to use their gun on someone if they have one
-            if player_guns[i] > 0:
-                use_gun = input(f"Do you want to use your Gun on another player? (yes/no): ").lower()
-                if use_gun == "yes":
-                    target = input(f"Enter the name of the player you want to shoot: ")
-                    if target in players and target != players[i]:
-                        print(f"{players[i]} shot {target}!")
-                        # The target loses 1 life
-                        target_index = players.index(target)
-                        if player_lives[target_index] > 0:
-                            player_lives[target_index] -= 1
-                            print(f"{target} lost 1 life! They now have {player_lives[target_index]} life(s) left.")
-                        else:
-                            print(f"{target} has no lives left and is out!")
-                            players.pop(target_index)
-                            player_money.pop(target_index)
-                            player_guns.pop(target_index)
-                            player_lives.pop(target_index)
-                            player_diseased.pop(target_index)
-                            player_disease_names.pop(target_index)
-                            player_thief_bags.pop(target_index)
-                            campfire_skip_turns.pop(target_index)
-
-    print(f"{players[0]} wins the game!")
-    print("\nGame restarting...\n")
+    # Restart Game Prompt
+    restart = input("\nDo you want to play again? (yes/no): ").lower()
+    if restart != "yes":
+        print("Thanks for playing Bombaclat Roulette! Goodbye!")
+        break
